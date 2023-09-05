@@ -26,7 +26,7 @@ class _GroceryListState extends State<GroceryList> {
         'flutter-prep-95c73-default-rtdb.firebaseio.com', 'shopping-list.json');
     final response = await http.get(url);
     final Map<String, dynamic> listData = json.decode(response.body);
-    final List<GroceryItem> _loadedItems = [];
+    final List<GroceryItem> loadedItems = [];
 
     // convert json Map data to a dart List data
     // creates a new grocery item, adds it to temporary loadeditems list, for every item part of the response.
@@ -37,27 +37,35 @@ class _GroceryListState extends State<GroceryList> {
           .firstWhere(
               (catItem) => catItem.value.title == item.value['category'])
           .value; // matching category where a condition is met
-      _loadedItems.add(GroceryItem(
-        id: item.key,
-        name: item.value['name'],
-        quantity: item.value['quantity'],
-        category: category,
-      ));
+      loadedItems.add(
+        GroceryItem(
+          id: item.key,
+          name: item.value['name'],
+          quantity: item.value['quantity'],
+          category: category,
+        ),
+      );
     }
     setState(() {
       _groceryItems =
-          _loadedItems; // overriding initial list of data with GET data
+          loadedItems; // overriding initial list of data with GET data
     });
   }
 
   void _addItem() async {
-    await Navigator.of(context).push<GroceryItem>(
+    final newItem = await Navigator.of(context).push<GroceryItem>(
       MaterialPageRoute(
         builder: (ctx) => const NewItem(),
       ),
     );
 
-    _loadItems();
+    if (newItem == null) {
+      return; // if user pressed the back button instead of NewItem to get to the screen
+    }
+
+    setState(() {
+      _groceryItems.add(newItem);
+    });
   }
 
   void _removeItem(GroceryItem item) {
