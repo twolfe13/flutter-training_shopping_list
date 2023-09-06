@@ -15,6 +15,7 @@ class GroceryList extends StatefulWidget {
 class _GroceryListState extends State<GroceryList> {
   List<GroceryItem> _groceryItems = [];
   var _isLoading = true;
+  String? _error;
 
   @override // initializing loadItems() when the app starts up with super.initState()
   void initState() {
@@ -26,6 +27,22 @@ class _GroceryListState extends State<GroceryList> {
     final url = Uri.https(
         'flutter-prep-95c73-default-rtdb.firebaseio.com', 'shopping-list.json');
     final response = await http.get(url);
+
+    // error handling "no data" case (all items deleted)
+    if (response.statusCode >= 400) {
+      setState(() {
+        _error = 'Failed to fetch data. Please try again.';
+      });
+    }
+
+    if (response.body == 'null') {
+      // 'null' check depends on back-end technology
+      setState(() {
+        _isLoading = false;
+      });
+      return; // so we don't go through the below code if we don't have data from the back-end, when we don't have data
+    }
+
     final Map<String, dynamic> listData = json.decode(response.body);
     final List<GroceryItem> loadedItems = [];
 
@@ -75,7 +92,7 @@ class _GroceryListState extends State<GroceryList> {
     setState(() {
       _groceryItems.remove(item);
     });
-    final url = Uri.https('flutter-prep-95c73-default-rtdb.firebaseio.com',
+    final url = Uri.https('flutter-prep-95c73-default-rt.firebaseio.com',
         'shopping-list/${item.id}.json'); // in database target specific items by firebase ID
 
     final response = await http.delete(url);
@@ -83,7 +100,7 @@ class _GroceryListState extends State<GroceryList> {
     if (response.statusCode >= 400) {
       setState(() {
         _groceryItems.insert(index,
-            item); // undo deletion if something went wrong.  .insert() to add to a certain index
+            item); // undo deletion if something went wrong by adding it back.  .insert() to add to a certain index
       });
     }
   }
