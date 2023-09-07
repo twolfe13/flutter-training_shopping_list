@@ -26,49 +26,56 @@ class _GroceryListState extends State<GroceryList> {
   void _loadItems() async {
     final url = Uri.https(
         'flutter-prep-95c73-default-rtdb.firebaseio.com', 'shopping-list.json');
-    final response = await http.get(url);
 
-    // error handling "no data" case (all items deleted)
-    if (response.statusCode >= 400) {
-      setState(() {
-        _error = 'Failed to fetch data. Please try again.';
-      });
-    }
+    try {
+      final response = await http.get(url);
 
-    if (response.body == 'null') {
-      // 'null' check depends on back-end technology
+      // error handling "no data" case (all items deleted)
+      if (response.statusCode >= 400) {
+        setState(() {
+          _error = 'Failed to fetch data. Please try again.';
+        });
+      }
+
+      if (response.body == 'null') {
+        // 'null' check depends on back-end technology
+        setState(() {
+          _isLoading = false;
+        });
+        return; // so we don't go through the below code if we don't have data from the back-end, when we don't have data
+      }
+
+      final Map<String, dynamic> listData = json.decode(response.body);
+      final List<GroceryItem> loadedItems = [];
+
+      // convert json Map data to a dart List data
+      // creates a new grocery item, adds it to temporary loadeditems list, for every item part of the response.
+      //   So for every response item we create a new grocery item witch category of pre-defined Categories, AND the data from the back-end like unique ID provided by Firebase
+
+      for (final item in listData.entries) {
+        final category = categories.entries
+            .firstWhere(
+                (catItem) => catItem.value.title == item.value['category'])
+            .value; // matching category where a condition is met
+        loadedItems.add(
+          GroceryItem(
+            id: item.key,
+            name: item.value['name'],
+            quantity: item.value['quantity'],
+            category: category,
+          ),
+        );
+      }
       setState(() {
+        _groceryItems =
+            loadedItems; // overriding initial list of data with GET data
         _isLoading = false;
       });
-      return; // so we don't go through the below code if we don't have data from the back-end, when we don't have data
+    } catch (error) {
+      setState(() {
+        _error = 'Something went wrong!';
+      });
     }
-
-    final Map<String, dynamic> listData = json.decode(response.body);
-    final List<GroceryItem> loadedItems = [];
-
-    // convert json Map data to a dart List data
-    // creates a new grocery item, adds it to temporary loadeditems list, for every item part of the response.
-    //   So for every response item we create a new grocery item witch category of pre-defined Categories, AND the data from the back-end like unique ID provided by Firebase
-
-    for (final item in listData.entries) {
-      final category = categories.entries
-          .firstWhere(
-              (catItem) => catItem.value.title == item.value['category'])
-          .value; // matching category where a condition is met
-      loadedItems.add(
-        GroceryItem(
-          id: item.key,
-          name: item.value['name'],
-          quantity: item.value['quantity'],
-          category: category,
-        ),
-      );
-    }
-    setState(() {
-      _groceryItems =
-          loadedItems; // overriding initial list of data with GET data
-      _isLoading = false;
-    });
   }
 
   void _addItem() async {
