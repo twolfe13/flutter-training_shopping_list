@@ -1,9 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shopping_list/widgets/new_item.dart';
-import 'package:shopping_list/models/grocery_item.dart';
 import 'package:shopping_list/data/categories.dart';
+import 'package:shopping_list/models/category.dart';
+
+import 'package:shopping_list/models/grocery_item.dart';
+import 'package:shopping_list/widgets/new_item.dart';
 
 class GroceryList extends StatefulWidget {
   const GroceryList({super.key});
@@ -17,7 +20,7 @@ class _GroceryListState extends State<GroceryList> {
   var _isLoading = true;
   String? _error;
 
-  @override // initializing loadItems() when the app starts up with super.initState()
+  @override
   void initState() {
     super.initState();
     _loadItems();
@@ -25,38 +28,31 @@ class _GroceryListState extends State<GroceryList> {
 
   void _loadItems() async {
     final url = Uri.https(
-        'flutter-prep-95c73-default-rtdb.firebaseio.com', 'shopping-list.json');
+        'flutter-prep-default-rtdb.firebaseio.com', 'shopping-list.json');
 
     try {
       final response = await http.get(url);
 
-      // error handling "no data" case (all items deleted)
       if (response.statusCode >= 400) {
         setState(() {
-          _error = 'Failed to fetch data. Please try again.';
+          _error = 'Failed to fetch data. Please try again later.';
         });
       }
 
       if (response.body == 'null') {
-        // 'null' check depends on back-end technology
         setState(() {
           _isLoading = false;
         });
-        return; // so we don't go through the below code if we don't have data from the back-end, when we don't have data
+        return;
       }
 
       final Map<String, dynamic> listData = json.decode(response.body);
       final List<GroceryItem> loadedItems = [];
-
-      // convert json Map data to a dart List data
-      // creates a new grocery item, adds it to temporary loadeditems list, for every item part of the response.
-      //   So for every response item we create a new grocery item witch category of pre-defined Categories, AND the data from the back-end like unique ID provided by Firebase
-
       for (final item in listData.entries) {
         final category = categories.entries
             .firstWhere(
                 (catItem) => catItem.value.title == item.value['category'])
-            .value; // matching category where a condition is met
+            .value;
         loadedItems.add(
           GroceryItem(
             id: item.key,
@@ -67,13 +63,12 @@ class _GroceryListState extends State<GroceryList> {
         );
       }
       setState(() {
-        _groceryItems =
-            loadedItems; // overriding initial list of data with GET data
+        _groceryItems = loadedItems;
         _isLoading = false;
       });
     } catch (error) {
       setState(() {
-        _error = 'Something went wrong!';
+        _error = 'Something went wrong! Please try again later.';
       });
     }
   }
@@ -86,7 +81,7 @@ class _GroceryListState extends State<GroceryList> {
     );
 
     if (newItem == null) {
-      return; // if user pressed the back button instead of NewItem to get to the screen
+      return;
     }
 
     setState(() {
@@ -99,15 +94,16 @@ class _GroceryListState extends State<GroceryList> {
     setState(() {
       _groceryItems.remove(item);
     });
-    final url = Uri.https('flutter-prep-95c73-default-rtdb.firebaseio.com',
-        'shopping-list/${item.id}.json'); // in database target specific items by firebase ID
+
+    final url = Uri.https('flutter-prep-default-rtdb.firebaseio.com',
+        'shopping-list/${item.id}.json');
 
     final response = await http.delete(url);
 
     if (response.statusCode >= 400) {
+      // Optional: Show error message
       setState(() {
-        _groceryItems.insert(index,
-            item); // undo deletion if something went wrong by adding it back.  .insert() to add to a certain index
+        _groceryItems.insert(index, item);
       });
     }
   }
@@ -141,6 +137,10 @@ class _GroceryListState extends State<GroceryList> {
           ),
         ),
       );
+    }
+
+    if (_error != null) {
+      content = Center(child: Text(_error!));
     }
 
     return Scaffold(
